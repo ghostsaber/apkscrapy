@@ -84,11 +84,11 @@ class AnzhiSpider(scrapy.Spider):
             if href in self.bf:
                 continue;
             self.bf.add(href);
-            #yield Request(
-            #    url = href,
-            #    headers={"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:63.0) Gecko/20100101 Firefox/63.0"},
-            #    callback = self.parse_category
-            #);
+            yield Request(
+                url = href,
+                headers={"User-Agent":"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:63.0) Gecko/20100101 Firefox/63.0"},
+                callback = self.parse_category
+            );
         for aitem in appsoup.find_all('a'):
             if not aitem.has_attr('href'):
                 continue;
