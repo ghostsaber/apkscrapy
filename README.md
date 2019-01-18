@@ -25,8 +25,8 @@ finished:
   
 TODO:  
 >[pconline](https://dl.pconline.com.cn/android/)  main challenge: Can't generate token, it need browser to execute js code and receive token from server.  Sulotion: using selenium.  
->[oppo](https://store.oppomobile.com/) main challenge: it provide apk in mobile app, didn't find a website to provide apk downloading.  
->[hiapk](http://apk.hiapk.com/)  main challenge: it provide apk in mobile app, didn't find a website to provide apk downloading.  
+>[oppo](https://store.oppomobile.com/) main challenge: It provide apk downloading in mobile app store, didn't find a website to provide apk downloading.  
+>[hiapk](http://apk.hiapk.com/)  main challenge: It provide apk downloading in mobile app, didn't find a website to provide apk downloading.  
     
 Demo:  
 >scrapy crawl xiaomi(any vendor)   
