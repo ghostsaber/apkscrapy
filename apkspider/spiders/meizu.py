@@ -19,9 +19,21 @@ class MeizuSpider(scrapy.Spider):
     custom_settings = {"CONCURRENT_REQUESTS": 3};
     download_url = 'http://app.flyme.cn/%s/public/download.json?app_id=%d';
 
-    def __init__(self, *a, **kw):
+    def __init__(self, checkpoint = None, *a, **kw):
         super(MeizuSpider,self).__init__(*a, **kw);
         self.bf = BloomFilter(capacity=10000000);
+        self.checkpoint = checkpoint;
+        self.apkbf = BloomFilter(capacity=100000000);
+        if not checkpoint == None:
+            fd = open(checkpoint,'r');
+            while True:
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
+            
 
     def start_requests(self):
         for url in self.start_urls:
@@ -105,7 +117,12 @@ class MeizuSpider(scrapy.Spider):
         if not json_response['code'] == 200:
             return;
         urllink = json_response['value']['downloadUrl'];
+        apkid = response.meta['packagename'];
+        if apkid in self.apkbf:
+            return;
+        self.apkbf.add(apkid);
         item = ItemLoader(item=ApkspiderItem(), response=response);
+        item.add_value('apkid_specifiedbyplaform',apkid);
         item.add_value('commonname',response.meta['commonname']);
         item.add_value('apkplaform',response.meta['platform']);
         item.add_value('category',response.meta['category']);
@@ -116,4 +133,5 @@ class MeizuSpider(scrapy.Spider):
         item.add_value('version',response.meta['version']);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint',self.checkpoint);
         yield item.load_item();

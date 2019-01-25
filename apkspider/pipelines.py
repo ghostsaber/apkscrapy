@@ -32,14 +32,12 @@ logger = logging.getLogger(__name__)
 
 def downloadfile(urllink, outputroot, platform, category, apkid, packagename, checkpoint):
     targetdir = "%s/%s/%s"%(outputroot,platform,category);
-    if not os.path.exists(targetdir):
-        os.makedirs(targetdir);
     targetfile = "%s/%s.apk"%(targetdir,packagename);
-    #a = wget.download(urllink, targetfile);
+    a = wget.download(urllink, targetfile);
     time.sleep(2);
     checkpointdir = "%s/%s/"%(outputroot,platform);
     if not os.path.exists(checkpointdir):
-        os.path.makedirs(checkpointdir);
+        os.makedirs(checkpointdir);
     if checkpoint == None:
         checkpointfilename = checkpointdir + "checkpoint"
     else:
@@ -88,6 +86,11 @@ class ApkspiderPipeline(FilesPipeline):
         else:
             targs['checkpoint'] = None;
         funcvar = [(None,targs)];
+
+        targetdir = "%s/%s/%s"%(targs['outputroot'],targs['platform'],targs['category']);
+        if not os.path.exists(targetdir):
+            os.makedirs(targetdir);
+
         requests = threadpool.makeRequests(downloadfile,funcvar);
         [self.pool.putRequest(req) for req in requests];
         metadatafile = "%s/%s.meta"%(self.store_url,item['apkplaform'][0]);
