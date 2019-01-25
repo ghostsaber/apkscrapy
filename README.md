@@ -29,4 +29,7 @@ TODO:
 >[hiapk](http://apk.hiapk.com/)  main challenge: It provide apk downloading in mobile app store(apk), didn't find a website to provide apk downloading.  
     
 Demo:  
->scrapy crawl xiaomi(any vendor)   
+>scrapy crawl xiaomi(any vendor)  
+
+checkpoint:  
+>scrapy crawl xiaomi -a checkpoint=[checkpointfile]
