@@ -30,6 +30,7 @@ class ApkspiderItem(scrapy.Item):
     file_urls = scrapy.Field();
     files = scrapy.Field();
 
+    checkpoint = scrapy.Field(default=None);
     #use by pipeline
     #store_path = scrapy.Field(default=None);
     #sha1 = scrapy.Field(default=None);

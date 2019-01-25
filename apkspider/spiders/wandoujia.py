@@ -21,10 +21,21 @@ class WandoujiaSpider(scrapy.Spider):
 
     custom_settings = {"CONCURRENT_REQUESTS": 3}
 
-    def __init__(self,*a,**kw):
+    def __init__(self, checkpoint=None, *a,**kw):
         super(WandoujiaSpider,self).__init__(*a,**kw);
         self.categorybf = BloomFilter(capacity=10000000);
         self.category_base_url = 'https://www.wandoujia.com/wdjweb/api/category/more?catId=%d&subCatId=%d&page=%d';
+        self.checkpoint = checkpoint;
+        self.apkbf = BloomFilter(capacity=100000000);
+        if not checkpoint == None:
+            fd = open(checkpoint);
+            while(True):
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
 
     def start_requests(self):
         for url in self.start_urls:
@@ -152,7 +163,11 @@ class WandoujiaSpider(scrapy.Spider):
         timepattern = re.compile(ur'[0-9/]+');
         updatetime = timepattern.search(updatetime).group();
         packagename = response.url[response.url.rfind('/')+1:];
+        if packagename in self.apkbf:
+            return;
+        self.apkbf.add(packagename);
         item = ItemLoader(item=ApkspiderItem(), response=response);
+        item.add_value('apkid_specifiedbyplaform',packagename);
         item.add_value('commonname',commonname);
         item.add_value('apkplaform',platform);
         item.add_value('category',category);
@@ -164,4 +179,5 @@ class WandoujiaSpider(scrapy.Spider):
         item.add_value('permission',permission);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint', self.checkpoint);
         yield item.load_item();

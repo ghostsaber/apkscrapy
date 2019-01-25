@@ -80,6 +80,7 @@ class PconlineSpider(scrapy.Spider):
             );
 
     def parse_detail(self, response):
+        packagenamepattern = re.compile(ur'/[^/]*.apk');
         soup = bs4.BeautifulSoup(response.text, 'html.parser');
         idpattern = re.compile(ur'[0-9]+');
         versionpattern = re.compile(ur'[0-9.]+');
@@ -94,8 +95,20 @@ class PconlineSpider(scrapy.Spider):
         developer = developer[developer.find(u'：')+1:].strip();
         updatetime = msglist[5].get_text();
         updatetime = updatetime[updatetime.find(u'：')+1:].strip();
-        print(response.url);
         apkid = idpattern.search(response.url).group();
         urllink = self.httpprotocol + soup.select('.dl-btn')[0]['tempurl'];
         print(urllink);
-        packagename;
+        packagename = packagenamepattern.search(urllink).group();
+        item = ItemLoader(item=ApkspiderItem(), response=response);
+        item.add_value('commonname',commonname);
+        item.add_value('apkplaform',self.name);
+        item.add_value('apkid_specifiedbyplaform',apkid);
+        item.add_value('category',category);
+        item.add_value('developer',developer);
+        item.add_value('packagename',packagename);
+        item.add_value('updatetime',updatetime);
+        item.add_value('size',size);
+        item.add_value('version',version);
+        item.add_value('urllink',response.url);
+        item.add_value('file_urls',response.url);
+        yield item.load_item();

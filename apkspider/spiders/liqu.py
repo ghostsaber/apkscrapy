@@ -42,9 +42,21 @@ class LiquSpider(scrapy.Spider):
     start_urls = ['https://www.liqucn.com/rj/', 'https://www.liqucn.com/yx/'];
     TRY_NUM = 3;
 
-    def __init__(self, *a, **kw):
+    def __init__(self, checkpoint=None, *a, **kw):
         super(LiquSpider, self).__init__(*a, **kw);
         self.bf = BloomFilter(capacity=10000000);
+        self.checkpoint = checkpoint;
+        self.apkbf = BloomFilter(capacity=100000000);
+        if not checkpoint == None:
+            fd = open(checkpoint, 'r');
+            while(True):
+                line=fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
+        
 
     def start_requests(self):
         for url in self.start_urls:
@@ -132,6 +144,9 @@ class LiquSpider(scrapy.Spider):
         idpattern = re.compile(ur'[0-9]+');
         apkid = idpattern.search(response.url).group();
         packagename = packagenamepattern.search(urllink).group()[1:-4];
+        if apkid in self.apkbf:
+            return;
+        self.apkbf.add(apkid);
         item = ItemLoader(item=ApkspiderItem(), response=response);
         item.add_value('commonname',commonname);
         item.add_value('apkplaform',self.name);
@@ -144,5 +159,6 @@ class LiquSpider(scrapy.Spider):
         item.add_value('version',version);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint',self.checkpoint);
         yield item.load_item();
 

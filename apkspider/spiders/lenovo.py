@@ -21,9 +21,20 @@ class LenovoSpider(scrapy.Spider):
     custom_settings = {"CONCURRENT_REQUESTS": 3}
     base_url = 'https://www.lenovomm.com';
 
-    def __init__(self,*a,**kw):
+    def __init__(self, checkpoint = None, *a,**kw):
         super(LenovoSpider,self).__init__(*a,**kw);
         self.bf = BloomFilter(capacity=10000000);
+        self.checkpoint = checkpoint;
+        self.apkbf = BloomFilter(capacity=1000000000);
+        if not checkpoint == None:
+            fd = open(checkpoint,'r');
+            while(True):
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
     
     def start_requests(self):
         for url in self.start_urls:
@@ -90,6 +101,7 @@ class LenovoSpider(scrapy.Spider):
 
     def parse_detail(self, response):
         soup = bs4.BeautifulSoup(response.text, 'html.parser');
+        idpattern = re.compile(ur'[0-9]+');
         appinfo = soup.select('.app-info')[0];
         apknamepattern = re.compile(ur'appdetail/.*?/');
         commonname = appinfo.select('.title')[0].get_text();
@@ -98,9 +110,16 @@ class LenovoSpider(scrapy.Spider):
         sv = appinfo.select('.dec')[0].get_text().split('|');
         size = sv[0];
         version = sv[1];
+        print(response.url);
+        apkid = idpattern.search(response.url).group();
+        print(apkid);
         packagename = apknamepattern.search(response.url).group()[10:-1];
         urllink = soup.select('.download')[0]['href'];
+        if apkid in self.apkbf:
+            return;
+        self.apkbf.add(apkid);
         item = ItemLoader(item=ApkspiderItem(), response=response);
+        item.add_value('apkid_specifiedbyplaform',apkid);
         item.add_value('commonname',commonname);
         item.add_value('apkplaform',platform);
         item.add_value('category',category);
@@ -109,5 +128,6 @@ class LenovoSpider(scrapy.Spider):
         item.add_value('version',version);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint',self.checkpoint);
         yield item.load_item();
 

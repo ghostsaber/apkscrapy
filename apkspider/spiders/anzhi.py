@@ -44,10 +44,21 @@ class AnzhiSpider(scrapy.Spider):
     base_url = 'http://www.anzhi.com';
     downloadgate = 'http://www.anzhi.com/dl_app.php?s=%d';
 
-    def __init__(self, *a, **kw):
+    def __init__(self, checkpoint = None, *a, **kw):
         super(AnzhiSpider, self).__init__(*a, **kw);
         self.bf = BloomFilter(capacity = 10000000);
         self.downloadlink = dict();
+        self.checkpoint = checkpoint;
+        self.apkbf = BloomFilter(capacity=100000000);
+        if not checkpoint == None:
+            fd = open(checkpoint,'r');
+            while True:
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
 
     def start_requests(self):
         for url in self.start_urls:
@@ -127,6 +138,9 @@ class AnzhiSpider(scrapy.Spider):
         urllink = proxy.get_downloadaddress();
         packagenamepattern = re.compile(ur'/[^/]*\.html');
         packagename = packagenamepattern.search(response.url).group()[1:-5];
+        if apkid in self.apkbf:
+            return;
+        self.apkbf.add(apkid);
         item = ItemLoader(item=ApkspiderItem(), response=response);
         item.add_value('commonname',commonname);
         item.add_value('apkplaform',self.name);
@@ -139,5 +153,6 @@ class AnzhiSpider(scrapy.Spider):
         item.add_value('version',version);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint',self.checkpoint);
         yield item.load_item();
 

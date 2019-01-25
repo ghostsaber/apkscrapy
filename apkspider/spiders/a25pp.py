@@ -19,9 +19,20 @@ class A25ppSpider(scrapy.Spider):
     start_urls = ['https://www.25pp.com/android/','https://www.25pp.com/android/game/'];
     base_url = 'https://www.25pp.com';
 
-    def __init__(self,*a,**kw):
+    def __init__(self, checkpoint=None, *a, **kw):
         super(A25ppSpider,self).__init__(*a,**kw);
         self.bf = BloomFilter(capacity = 10000000);
+        self.apkbf = BloomFilter(capacity = 100000000);
+        self.checkpoint = checkpoint;
+        if not checkpoint == None:
+            fd = open(checkpoint, 'r');
+            while True:
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
 
     def start_requests(self):
         for url in self.start_urls:
@@ -85,10 +96,8 @@ class A25ppSpider(scrapy.Spider):
 
     def parse_detail(self, response):
         soup = bs4.BeautifulSoup(response.text, 'html.parser');
-        print(response.url);
         appinfo = soup.select('.app-info')[0];
         commonname = appinfo.select('.app-title')[0].get_text();
-        print(commonname);
         pls = soup.select('.permission-list');
         permissionlist = list();
         if not len(pls) == 0:
@@ -101,10 +110,17 @@ class A25ppSpider(scrapy.Spider):
         version = detail_info[2].get_text();
         urllink = soup.select('.btn-install')[0]['appdownurl'];
         platform = self.name;
-        print(urllink);
+        detailpattern = re.compile(ur'detail_[0-9]+');
+        idpattern = re.compile(ur'[0-9]+');
+        detailstring = detailpattern.search(response.url).group();
+        apkid = idpattern.search(detailstring).group();
         packagename = commonname;
+        if apkid in self.apkbf:
+            return;
+        print("apkid%s"%apkid);
         item = ItemLoader(item=ApkspiderItem(), response=response);
         item.add_value('commonname',commonname);
+        item.add_value('apkid_specifiedbyplaform',apkid);
         item.add_value('apkplaform',platform);
         item.add_value('category',category);
         item.add_value('packagename',packagename);
@@ -114,4 +130,5 @@ class A25ppSpider(scrapy.Spider):
         item.add_value('permission',permissionlist);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint', self.checkpoint);
         yield item.load_item();

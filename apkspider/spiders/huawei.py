@@ -21,9 +21,20 @@ class HuaweiSpider(scrapy.Spider):
     base_url = 'http://app.hicloud.com';
     custom_settings = {"CONCURRENT_REQUESTS": 3};
 
-    def __init__(self, *a, **kw):
+    def __init__(self, checkpoint=None ,*a, **kw):
         super(HuaweiSpider, self).__init__(*a, **kw);
         self.bf = BloomFilter(capacity = 10000000);
+        self.checkpoint = checkpoint;
+        self.apkbf = BloomFilter(capacity=100000000);
+        if not checkpoint == None:
+            fd = open(checkpoint, 'r');
+            while(True):
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
     
     def start_requests(self):
         for url in self.start_urls:
@@ -111,12 +122,15 @@ class HuaweiSpider(scrapy.Spider):
         if not urllink.has_attr("onclick"):
             return;
         urllink = urllink['onclick'].split('\'');
-        apkid = urllink[0];
+        apkid = urllink[1];
         urllink = urllink[11];
         urllink = urllink[:urllink.find('?sign')];
         print(urllink);
         packagename = urllink[urllink.rfind('/')+1:];
         print(packagename);
+        if apkid in self.apkbf:
+            return;
+        self.apkbf.add(apkid);
         item = ItemLoader(item=ApkspiderItem(), response=response);
         item.add_value('commonname',commonname);
         item.add_value('apkplaform',platform);
@@ -130,5 +144,6 @@ class HuaweiSpider(scrapy.Spider):
         item.add_value('permission',permissionlist);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint', self.checkpoint);
         yield item.load_item();
 

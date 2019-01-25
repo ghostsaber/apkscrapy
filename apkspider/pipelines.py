@@ -25,16 +25,29 @@ import fcntl
 
 import time
 
+import os
+
 logger = logging.getLogger(__name__)
 
 
-def downloadfile(urllink, outputroot, platform, category, packagename):
+def downloadfile(urllink, outputroot, platform, category, apkid, packagename, checkpoint):
     targetdir = "%s/%s/%s"%(outputroot,platform,category);
     if not os.path.exists(targetdir):
         os.makedirs(targetdir);
     targetfile = "%s/%s.apk"%(targetdir,packagename);
-    a = wget.download(urllink, targetfile);
+    #a = wget.download(urllink, targetfile);
     time.sleep(2);
+    checkpointdir = "%s/%s/"%(outputroot,platform);
+    if not os.path.exists(checkpointdir):
+        os.path.makedirs(checkpointdir);
+    if checkpoint == None:
+        checkpointfilename = checkpointdir + "checkpoint"
+    else:
+        checkpointfilename = checkpoint;
+    checkpointfd = open(checkpointfilename, "a+");
+    checkpointfd.write(apkid);
+    checkpointfd.write('\n');
+    checkpointfd.close();
 
 def encodewithutf8(string):
     return string.encode(encoding = 'UTF-8',errors='strict');
@@ -69,7 +82,11 @@ class ApkspiderPipeline(FilesPipeline):
         targs['platform'] = item['apkplaform'][0];
         targs['category'] = item['category'][0];
         targs['packagename'] = item['packagename'][0];
-
+        targs['apkid'] = item['apkid_specifiedbyplaform'][0];
+        if 'checkpoint' in item:
+            targs['checkpoint'] = item['checkpoint'][0];
+        else:
+            targs['checkpoint'] = None;
         funcvar = [(None,targs)];
         requests = threadpool.makeRequests(downloadfile,funcvar);
         [self.pool.putRequest(req) for req in requests];

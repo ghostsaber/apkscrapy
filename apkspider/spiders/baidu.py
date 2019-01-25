@@ -17,9 +17,20 @@ class BaiduSpider(scrapy.Spider):
     start_urls = ['https://shouji.baidu.com/software','https://shouji.baidu.com/game'];
     custom_settings = {"CONCURRENT_REQUESTS": 3};
 
-    def __init__(self,*a,**kw):
+    def __init__(self, checkpoint=None, *a,**kw):
         super(BaiduSpider,self).__init__(*a,**kw);
         self.categorybf = BloomFilter(capacity=100000000);
+        self.checkpoint = checkpoint;
+        self.apkbf = BloomFilter(capacity=100000000);
+        if not checkpoint == None:
+            fd = open(checkpoint,'r');
+            while(True):
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
 
     def start_requests(self):
         for url in self.start_urls:
@@ -84,6 +95,9 @@ class BaiduSpider(scrapy.Spider):
         platformid = idpattern.search(response.url).group();
         urllink = soup.find_all("a", class_='apk')[0]['href'];
         category = soup.find_all("a", attrs={'target':'_self'})[2].get_text();
+        if platformid in self.apkbf:
+            return;
+        self.apkbf.add(platformid);
         item = ItemLoader(item=ApkspiderItem(), response=response);
         item.add_value('commonname',commonname);
         item.add_value('apkplaform',platform);
@@ -94,4 +108,5 @@ class BaiduSpider(scrapy.Spider):
         item.add_value('version',version);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint',self.checkpoint);
         yield item.load_item();

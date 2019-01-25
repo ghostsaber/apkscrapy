@@ -22,10 +22,21 @@ class XiaomiSpider(scrapy.Spider):
     custom_settings = {"CONCURRENT_REQUESTS": 3}
     base_url = "http://app.mi.com";
 
-    def __init__(self,*a,**kw):
+    def __init__(self, checkpoint=None, *a, **kw):
         super(XiaomiSpider,self).__init__(*a,**kw);
         self.categorybf = BloomFilter(capacity=1000);
+        self.apkbf = BloomFilter(capacity=100000000);
         self.urllinkdic = dict();
+        self.checkpoint = checkpoint;
+        if not checkpoint == None:
+            fd = open(checkpoint,'r');
+            while(True):
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
 
     def start_requests(self):
         for url in self.start_urls:
@@ -111,6 +122,8 @@ class XiaomiSpider(scrapy.Spider):
             permission = permissions.pop(0).text.encode(encoding='UTF-8',errors='strict');
             permission = permission[3:].strip();
             permissionlist.append(permission);
+        if apkid_specifiedbyplaform in self.apkbf:
+            return;
         item = ItemLoader(item=ApkspiderItem(), response=response);
         item.add_value('commonname',commonname);
         item.add_value('apkplaform',apkplaform);
@@ -124,4 +137,5 @@ class XiaomiSpider(scrapy.Spider):
         item.add_value('permission',permissionlist);
         item.add_value('urllink',urlink);
         item.add_value('file_urls',urlink);
+        item.add_value('checkpoint', self.checkpoint);
         yield item.load_item();

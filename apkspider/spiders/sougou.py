@@ -44,9 +44,20 @@ class SougouSpider(scrapy.Spider):
     json_url = '%s?act=getapp&page=%d';
     download_url = 'http://zhushou.sogou.com/apps/download.html?appid=%d';
 
-    def __init__(self, *a, **kw):
+    def __init__(self, checkpoint=None, *a, **kw):
         super(SougouSpider, self).__init__(*a, **kw);
         self.bf = BloomFilter(capacity = 10000000);
+        self.checkpoint = checkpoint;
+        self.apkbf = BloomFilter(capacity = 100000000);
+        if not checkpoint == None:
+            fd = open(checkpoint,'r');
+            while True:
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
 
     def start_requests(self):
         for url in self.start_urls:
@@ -131,6 +142,9 @@ class SougouSpider(scrapy.Spider):
         downloadurl = json_response['data']['file_url'];
         proxy = Proxy(0,downloadurl);
         downloadurl = proxy.get_downloadaddress();
+        if response.meta['appid'] in self.apkbf:
+            return;
+        self.apkbf.add(response.meta['appid']);
         item = ItemLoader(item=ApkspiderItem(), response=response);
         item.add_value('commonname',response.meta['commonname']);
         item.add_value('apkplaform',self.name);
@@ -143,4 +157,5 @@ class SougouSpider(scrapy.Spider):
         item.add_value('version',response.meta['version']);
         item.add_value('urllink',downloadurl);
         item.add_value('file_urls',downloadurl);
+        item.add_value('checkpoint', self.checkpoint);
         yield item.load_item();

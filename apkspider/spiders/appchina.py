@@ -22,9 +22,20 @@ class AppchinaSpider(scrapy.Spider):
     
     base_url = 'http://www.appchina.com';
 
-    def __init__(self,*a, **kw):
+    def __init__(self, checkpoint=None, *a, **kw):
         super(AppchinaSpider, self).__init__(*a, **kw);
         self.bf = BloomFilter(capacity=10000000);
+        self.apkbf = BloomFilter(capacity=10000000);
+        self.checkpoint = checkpoint;
+        if not checkpoint == None:
+            fd = open(checkpoint,'r');
+            while(True):
+                line = fd.readline();
+                if not line:
+                    break;
+                line = line.strip();
+                self.apkbf.add(line);
+            fd.close();
 
 
     def start_requests(self):
@@ -105,8 +116,12 @@ class AppchinaSpider(scrapy.Spider):
         permissionlist = list();
         permissions = soup.select('.permissions-list')[0].find_all('li');
         for perm in permissions:
-            permissionlist.append(perm);
+            permissionlist.append(perm.get_text());
+        if packagename in self.apkbf:
+            return;
+        self.apkbf.add(packagename);
         item = ItemLoader(item=ApkspiderItem(), response=response);
+        item.add_value('apkid_specifiedbyplaform',packagename);
         item.add_value('commonname',commonname);
         item.add_value('apkplaform',self.name);
         item.add_value('category',category);
@@ -116,5 +131,6 @@ class AppchinaSpider(scrapy.Spider):
         item.add_value('permission',permissionlist);
         item.add_value('urllink',urllink);
         item.add_value('file_urls',urllink);
+        item.add_value('checkpoint',self.checkpoint);
         yield item.load_item();
             
